@@ -1,18 +1,24 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 
-static HWND hwnd = NULL;
-static bool window_should_close = false;
+static struct WindowsPlatform {
+    HWND hwnd;
+    bool window_should_close;
+} windows_platform;
 
-LRESULT CALLBACK windows_window_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT CALLBACK windows_window_callback(
+    HWND hwnd, UINT msg,
+    WPARAM wparam, LPARAM lparam
+) {
     LRESULT result = 0;
     switch (msg) {
     case WM_CLOSE: {
-        window_should_close = true;
+        windows_platform.window_should_close = true;
     } break;
     default: {
         result = DefWindowProcA(hwnd, msg, wparam, lparam);
@@ -44,7 +50,7 @@ bool windows_create_window(int width, int height, char *title) {
     }
 
     DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
-    hwnd = CreateWindowExA(
+    HWND hwnd = CreateWindowExA(
         0, title, // Class name
         title,
         dwStyle,
@@ -56,7 +62,9 @@ bool windows_create_window(int width, int height, char *title) {
         return false;
     }
 
+    windows_platform.hwnd = hwnd;
     ShowWindow(hwnd, SW_SHOW);
+
     return true;
 }
 
@@ -68,14 +76,15 @@ void windows_update_window() {
     }
 }
 
+int windows_window_should_close() {
+    return windows_platform.window_should_close;
+}
+
 int main(void) {
-    bool success = windows_create_window(800, 600, "Hello, World!");
+    bool success = windows_create_window(800, 600, "Hello, Window!");
+    assert(success && "Failed to create window.");
 
-    if (!success) {
-        return 1;
-    }
-
-    while (!window_should_close) {
+    while (!windows_window_should_close()) {
         windows_update_window();
     }
 
